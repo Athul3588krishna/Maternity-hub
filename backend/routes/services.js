@@ -32,6 +32,10 @@ router.post('/', protect, async (req, res) => {
             return res.status(404).json({ message: 'Maternity center not found' });
         }
 
+        if (req.user.role !== 'admin' && center.email !== req.user.email) {
+            return res.status(403).json({ message: 'Not authorized to add services for this center' });
+        }
+
         const service = await Service.create({
             center: centerId,
             serviceName,
@@ -50,12 +54,17 @@ router.post('/', protect, async (req, res) => {
 
 // @route   DELETE /api/services/:id
 // @desc    Delete a service
-// @access  Private
+// @access  Private (Provider / Admin)
 router.delete('/:id', protect, async (req, res) => {
     try {
         const service = await Service.findById(req.params.id);
         if (!service) {
             return res.status(404).json({ message: 'Service not found' });
+        }
+
+        const center = await MaternityCenter.findById(service.center);
+        if (req.user.role !== 'admin' && (!center || center.email !== req.user.email)) {
+            return res.status(403).json({ message: 'Not authorized to delete services for this center' });
         }
 
         await service.deleteOne();

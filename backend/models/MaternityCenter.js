@@ -13,11 +13,10 @@ const MaternityCenterSchema = new mongoose.Schema({
     status: { type: String, enum: ["Pending", "Approved", "Rejected"], default: "Pending" },
 }, { timestamps: true });
 
-MaternityCenterSchema.pre('save', async function (next) {
-    if (!this.isModified('password')) return next();
+MaternityCenterSchema.pre('save', async function () {
+    if (!this.isModified('password')) return;
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
-    next();
 });
 
 MaternityCenterSchema.methods.matchPassword = async function (enteredPassword) {

@@ -82,9 +82,19 @@ router.get('/my', protect, async (req, res) => {
 
 // @route   GET /api/bookings/center/:centerId
 // @desc    Get bookings for a specific center (for Provider)
-// @access  Private
+// @access  Private (Provider / Admin)
 router.get('/center/:centerId', protect, async (req, res) => {
     try {
+        const MaternityCenter = require('../models/MaternityCenter');
+        const center = await MaternityCenter.findById(req.params.centerId);
+        if (!center) {
+            return res.status(404).json({ message: 'Maternity center not found' });
+        }
+
+        if (req.user.role !== 'admin' && center.email !== req.user.email) {
+            return res.status(403).json({ message: 'Not authorized to view bookings for this center' });
+        }
+
         const bookings = await Booking.find({ center: req.params.centerId })
             .populate('user', 'name email phone')
             .populate('service', 'serviceName price duration')
@@ -137,6 +147,17 @@ router.put('/:id/status', protect, async (req, res) => {
         const booking = await Booking.findById(req.params.id);
         if (!booking) {
             return res.status(404).json({ message: 'Booking not found' });
+        }
+
+        const MaternityCenter = require('../models/MaternityCenter');
+        const center = await MaternityCenter.findById(booking.center);
+
+        const isOwner = center && center.email === req.user.email;
+        const isPatient = booking.user.toString() === req.user._id.toString();
+        const isAdmin = req.user.role === 'admin';
+
+        if (!isOwner && !isPatient && !isAdmin) {
+            return res.status(403).json({ message: 'Not authorized to update this booking' });
         }
 
         booking.bookingStatus = bookingStatus;

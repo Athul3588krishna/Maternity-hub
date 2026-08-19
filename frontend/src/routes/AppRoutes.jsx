@@ -10,12 +10,13 @@ import MyBookings from "../pages/MyBookings";
 import AdminDashboard from "../pages/AdminDashboard";
 import ProviderDashboard from "../pages/ProviderDashboard";
 
-const ProtectedRoute = ({ children, adminOnly = false }) => {
+const ProtectedRoute = ({ children, adminOnly = false, providerOnly = false }) => {
   const { user, loading } = useContext(AuthContext);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-500">Loading user session...</div>;
   if (!user) return <Navigate to="/login" replace />;
   if (adminOnly && user.role !== "admin") return <Navigate to="/" replace />;
+  if (providerOnly && user.role !== "provider" && user.role !== "admin" && !user.centerId) return <Navigate to="/" replace />;
 
   return children;
 };
@@ -36,7 +37,7 @@ export const AppRoutes = () => {
       } />
 
       <Route path="/provider-dashboard" element={
-        <ProtectedRoute>
+        <ProtectedRoute providerOnly>
           <ProviderDashboard />
         </ProtectedRoute>
       } />

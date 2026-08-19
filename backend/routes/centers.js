@@ -119,12 +119,16 @@ router.put('/:id/status', protect, adminOnly, async (req, res) => {
 
 // @route   PUT /api/centers/:id
 // @desc    Update maternity center profile
-// @access  Private
+// @access  Private (Provider / Admin)
 router.put('/:id', protect, async (req, res) => {
     try {
         const center = await MaternityCenter.findById(req.params.id);
         if (!center) {
             return res.status(404).json({ message: 'Maternity center not found' });
+        }
+
+        if (req.user.role !== 'admin' && center.email !== req.user.email) {
+            return res.status(403).json({ message: 'Not authorized to update this center profile' });
         }
 
         const { centerName, phone, address, location, description } = req.body;

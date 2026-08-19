@@ -18,13 +18,15 @@ const Register = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const role = tab === "Center Provider" ? "admin" : "user";
+      const isProvider = tab === "Center Provider";
+      const role = isProvider ? "provider" : "user";
       const payload = {
         name: formData.name,
         email: formData.email,
         password: formData.password,
         phone: formData.phone,
-        role
+        role,
+        ...(isProvider && { centerName: formData.centerName })
       };
       
       // Call the API we scaffolded earlier

@@ -36,18 +36,24 @@ router.post('/register', async (req, res) => {
         let centerId = null;
         // If registering as a provider, create the MaternityCenter entity
         if (userRole === 'admin' || userRole === 'provider') {
-            const center = await MaternityCenter.create({
-                centerName: centerName || `${name}'s Maternity Center`,
-                ownerName: name,
-                email,
-                password, // hashed in pre-save or reference
-                phone: phone || '123-456-7890',
-                address: address || '123 Healthcare Way',
-                location: location || 'San Francisco, CA',
-                description: description || 'Certified maternity care center.',
-                status: userRole === 'admin' ? 'Approved' : 'Pending'
-            });
-            centerId = center._id;
+            try {
+                const center = await MaternityCenter.create({
+                    centerName: centerName || `${name}'s Maternity Center`,
+                    ownerName: name,
+                    email,
+                    password,
+                    phone: phone || '123-456-7890',
+                    address: address || '123 Healthcare Way',
+                    location: location || 'San Francisco, CA',
+                    description: description || 'Certified maternity care center.',
+                    status: userRole === 'admin' ? 'Approved' : 'Pending'
+                });
+                centerId = center._id;
+            } catch (centerErr) {
+                // Remove orphaned user if center creation fails
+                await User.findByIdAndDelete(user._id);
+                throw centerErr;
+            }
         }
 
         const token = generateToken(user._id, user.role);

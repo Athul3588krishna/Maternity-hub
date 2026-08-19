@@ -75,11 +75,18 @@ const CenterDetails = () => {
       return;
     }
 
+    const targetCenterId = center?._id || id;
+    const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(targetCenterId);
+    if (!isValidObjectId) {
+      setReviewMsg("Reviews can only be submitted for registered database centers.");
+      return;
+    }
+
     setSubmittingReview(true);
     setReviewMsg("");
     try {
       await api.post("/reviews", {
-        centerId: center._id || id,
+        centerId: targetCenterId,
         rating: Number(rating),
         comment
       });
