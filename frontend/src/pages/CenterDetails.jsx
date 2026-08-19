@@ -1,119 +1,109 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, MapPin, Phone, Mail } from "lucide-react";
+import { ArrowLeft, MapPin, Phone, Mail, Loader2, Star } from "lucide-react";
 import { RatingStars } from "../components/RatingStars";
 import { BookingModal } from "../components/BookingModal";
 import { motion } from "framer-motion";
+import { api } from "../services/api";
+import { AuthContext } from "../context/AuthContext";
 
-const mockCenters = {
-  "1": {
-    name: "Blossom Maternity Center",
-    rating: 4.9,
-    reviews: 0,
-    distance: "5.2 km away",
-    description: "State-of-the-art maternity hospital specializing in natural water birth suites, painless labor care, level III NICU, and luxurious postnatal confinement suites.",
-    address: "450 Healthcare Ave, Suite 200, San Francisco, CA",
-    phone: "+1 (415) 555-0192",
-    email: "contact@blossommaternity.care",
-  },
-  "2": {
-    name: "St. Jude Postnatal Care",
-    rating: 4.8,
-    reviews: 0,
-    distance: "8.5 km away",
-    description: "Level III NICU, comprehensive high-risk pregnancy management, fetal cardiology & ultrasound.",
-    address: "1200 Hope Blvd, Chicago, IL",
-    phone: "+1 (312) 555-0921",
-    email: "care@stjude-infant.care",
-  },
-  "3": {
-    name: "Serenity Maternity Center",
-    rating: 5.0,
-    reviews: 0,
-    distance: "12.1 km away",
-    description: "Postpartum nursing retreat, lactation consultants, maternal mental wellness counseling, newborn nutrition.",
-    address: "44 Wellness Way, Austin, TX",
-    phone: "+1 (512) 555-7732",
-    email: "hello@serenityhaven.com",
-  },
-  "4": {
-    name: "Grace Postnatal Care",
-    rating: 4.7,
-    reviews: 0,
-    distance: "3.4 km away",
-    description: "Comprehensive prenatal diagnostics, painless epidural labor suites, and 24/7 emergency OB/GYN response.",
-    address: "888 Madison Ave, New York, NY",
-    phone: "+1 (212) 555-8891",
-    email: "info@gracefamily.nyc",
-  },
-  "5": {
-    name: "Lumina Maternity Center",
-    rating: 4.9,
-    reviews: 0,
-    distance: "15.8 km away",
-    description: "Premium maternal care focusing on holistic wellness, customized birth plans, and advanced prenatal genetics.",
-    address: "7700 Sunset Blvd, Los Angeles, CA",
-    phone: "+1 (310) 555-1200",
-    email: "contact@luminawomens.com",
-  },
-  "6": {
-    name: "Nurture Postnatal Care",
-    rating: 4.8,
-    reviews: 0,
-    distance: "6.7 km away",
-    description: "Cozy, home-like birthing environment with highly experienced midwives and comprehensive doula support.",
-    address: "204 Pine St, Seattle, WA",
-    phone: "+1 (206) 555-4309",
-    email: "hello@nurturecare.com",
-  },
-  "7": {
-    name: "Sunrise Maternity Center",
-    rating: 4.9,
-    reviews: 0,
-    distance: "9.2 km away",
-    description: "Specialized in high-risk pregnancies with an award-winning Level IV NICU and dedicated maternal-fetal medicine specialists.",
-    address: "100 Ocean Drive, Miami, FL",
-    phone: "+1 (305) 555-7650",
-    email: "care@sunriseneonatal.org",
-  },
-  "8": {
-    name: "Harmony Postnatal Care",
-    rating: 4.7,
-    reviews: 0,
-    distance: "11.0 km away",
-    description: "Eco-friendly birthing center offering water births, hypnobirthing classes, and postpartum family integration.",
-    address: "300 Mountain View Rd, Denver, CO",
-    phone: "+1 (303) 555-9011",
-    email: "info@harmonybirth.co",
-  }
+const mockFallbackCenter = {
+  _id: "1",
+  centerName: "Blossom Maternity Center",
+  rating: 4.9,
+  reviewsCount: 1,
+  description: "State-of-the-art maternity hospital specializing in natural water birth suites, painless labor care, level III NICU, and luxurious postnatal confinement suites.",
+  address: "450 Healthcare Ave, Suite 200",
+  location: "San Francisco, CA",
+  phone: "+1 (415) 555-0192",
+  email: "contact@blossommaternity.care",
+  services: [
+    { _id: "s1", serviceName: "Postnatal Lactation & Newborn Nursing", price: 3500, duration: "60 mins", description: "Certified lactation nurse consultation, infant attachment guidance." },
+    { _id: "s2", serviceName: "Postpartum Recovery & Wellness Care", price: 5000, duration: "90 mins", description: "Physical recovery assistance, mental wellness check, and nutrition plan." },
+    { _id: "s3", serviceName: "Prenatal Health & Sonography Package", price: 2500, duration: "45 mins", description: "Full fetal anatomy scan, maternal health assessment, and ultrasound recording." },
+    { _id: "s4", serviceName: "Luxury Water Birth Delivery Suite", price: 45000, duration: "24 Hours Care", description: "Private birthing tub, personal midwife, obstetrician on standby, and care kit." }
+  ],
+  reviews: [
+    { _id: "r1", user: { name: "Emily Watson" }, rating: 5, comment: "The birth suite was extraordinarily peaceful and the nurses were so compassionate!", createdAt: new Date().toISOString() }
+  ]
 };
-
-const mockPostnatalServices = [
-  { id: 1, name: "Postnatal Lactation & Newborn Nursing", price: 3500, duration: "60 mins", desc: "Certified lactation nurse consultation, infant attachment guidance." },
-  { id: 2, name: "Postpartum Recovery & Wellness Care", price: 5000, duration: "90 mins", desc: "Physical recovery assistance, mental wellness check, and nutrition plan." }
-];
-
-const mockOtherServices = [
-  { id: 3, name: "Prenatal Health & Sonography Package", price: 2500, duration: "45 mins", desc: "Full fetal anatomy scan, maternal health assessment, and ultrasound recording." },
-  { id: 4, name: "Luxury Water Birth Delivery Suite", price: 45000, duration: "24 Hours Care", desc: "Private birthing tub, personal midwife, obstetrician on standby, and care kit." }
-];
 
 const CenterDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const center = mockCenters[id] || mockCenters["1"];
-  
+  const { user } = useContext(AuthContext);
+
+  const [center, setCenter] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [selectedService, setSelectedService] = useState(null);
   const [showBookingModal, setShowBookingModal] = useState(false);
 
+  // Review Form state
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState("");
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [reviewMsg, setReviewMsg] = useState("");
+
   useEffect(() => {
     window.scrollTo(0, 0);
+    fetchCenterDetails();
   }, [id]);
+
+  const fetchCenterDetails = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get(`/centers/${id}`);
+      setCenter(res.data);
+    } catch (error) {
+      console.error("Error loading center details:", error);
+      setCenter(mockFallbackCenter);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleBook = (service) => {
     setSelectedService(service);
     setShowBookingModal(true);
   };
+
+  const handleReviewSubmit = async (e) => {
+    e.preventDefault();
+    if (!user) {
+      alert("Please sign in to write a review.");
+      navigate("/login");
+      return;
+    }
+
+    setSubmittingReview(true);
+    setReviewMsg("");
+    try {
+      await api.post("/reviews", {
+        centerId: center._id || id,
+        rating: Number(rating),
+        comment
+      });
+      setReviewMsg("Review submitted successfully!");
+      setComment("");
+      fetchCenterDetails();
+    } catch (error) {
+      setReviewMsg(error.response?.data?.message || "Failed to submit review");
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen pt-24 flex items-center justify-center text-slate-500">
+        <Loader2 className="w-8 h-8 animate-spin text-primary-500 mr-3" /> Loading center profile...
+      </div>
+    );
+  }
+
+  const centerData = center || mockFallbackCenter;
+  const services = centerData.services || [];
+  const reviews = centerData.reviews || [];
 
   return (
     <div className="min-h-screen pt-24 pb-12 px-4 sm:px-6 lg:px-8">
@@ -124,114 +114,121 @@ const CenterDetails = () => {
         
         {/* Header Section */}
         <div className="bg-white rounded-3xl p-8 md:p-12 shadow-sm border border-primary-100 mb-8">
-          <h1 className="text-3xl md:text-5xl font-bold text-slate-900 mb-4">{center.name}</h1>
+          <h1 className="text-3xl md:text-5xl font-bold text-slate-900 mb-4">{centerData.centerName || centerData.name}</h1>
           <div className="mb-6">
-            <RatingStars rating={center.rating} showCount={true} totalReviews={center.reviews} />
+            <RatingStars rating={centerData.rating || 4.9} showCount={true} totalReviews={centerData.reviewsCount || reviews.length} />
           </div>
-          <p className="text-lg text-slate-600 mb-8 leading-relaxed max-w-3xl">{center.description}</p>
+          <p className="text-lg text-slate-600 mb-8 leading-relaxed max-w-3xl">{centerData.description}</p>
           
-          <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 text-sm text-slate-600 border-t border-slate-100 pt-6 mt-6">
-            <div className="flex items-center"><MapPin className="w-5 h-5 mr-2 text-primary-500" /> {center.address} <span className="mx-2">•</span> {center.distance}</div>
-            <div className="flex items-center"><Phone className="w-5 h-5 mr-2 text-primary-500" /> {center.phone}</div>
-            <div className="flex items-center"><Mail className="w-5 h-5 mr-2 text-primary-500" /> {center.email}</div>
+          <div className="flex flex-col sm:flex-row flex-wrap gap-4 sm:gap-8 text-sm text-slate-600 border-t border-slate-100 pt-6 mt-6">
+            <div className="flex items-center"><MapPin className="w-5 h-5 mr-2 text-primary-500" /> {centerData.address}, {centerData.location}</div>
+            <div className="flex items-center"><Phone className="w-5 h-5 mr-2 text-primary-500" /> {centerData.phone}</div>
+            <div className="flex items-center"><Mail className="w-5 h-5 mr-2 text-primary-500" /> {centerData.email}</div>
           </div>
         </div>
 
-        {/* Postnatal Services */}
+        {/* Services List */}
         <div className="mb-12">
-          <h2 className="text-2xl font-bold text-slate-900 mb-6">Postnatal Care Services</h2>
-          <div className="grid md:grid-cols-2 gap-6">
-            {mockPostnatalServices.map((service, index) => (
-              <motion.div 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                key={service.id} 
-                className="bg-white p-6 rounded-2xl shadow-sm border border-primary-100 hover:border-primary-300 transition-colors flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="text-lg font-bold text-slate-900 pr-4">{service.name}</h3>
-                    <div className="text-primary-600 font-bold whitespace-nowrap">₹{service.price.toLocaleString('en-IN')}</div>
+          <h2 className="text-2xl font-bold text-slate-900 mb-6">Available Maternity & Postnatal Services</h2>
+          {services.length > 0 ? (
+            <div className="grid md:grid-cols-2 gap-6">
+              {services.map((service, index) => (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  key={service._id || index} 
+                  className="bg-white p-6 rounded-2xl shadow-sm border border-primary-100 hover:border-primary-300 transition-colors flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="text-lg font-bold text-slate-900 pr-4">{service.serviceName || service.name}</h3>
+                      <div className="text-primary-600 font-bold whitespace-nowrap">₹{Number(service.price).toLocaleString('en-IN')}</div>
+                    </div>
+                    <div className="text-sm font-medium text-slate-500 mb-3">{service.duration || '60 mins'}</div>
+                    <p className="text-slate-600 text-sm mb-6">{service.description || service.desc}</p>
                   </div>
-                  <div className="text-sm font-medium text-slate-500 mb-3">{service.duration}</div>
-                  <p className="text-slate-600 text-sm mb-6">{service.desc}</p>
-                </div>
-                <button onClick={() => handleBook(service)} className="btn-primary w-full mt-auto">
-                  Book Appointment
-                </button>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-
-        {/* Other Services */}
-        <div className="mb-12 pt-8 border-t border-slate-100">
-          <h2 className="text-2xl font-bold text-slate-900 mb-2">Other Available Services</h2>
-          <p className="text-slate-500 mb-6">This hospital also provides these prenatal and delivery services.</p>
-          <div className="grid md:grid-cols-2 gap-6">
-            {mockOtherServices.map((service, index) => (
-              <motion.div 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                key={service.id} 
-                className="bg-white p-6 rounded-2xl shadow-sm border border-primary-100 hover:border-primary-300 transition-colors flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="text-lg font-bold text-slate-900 pr-4">{service.name}</h3>
-                    <div className="text-primary-600 font-bold whitespace-nowrap">₹{service.price.toLocaleString('en-IN')}</div>
-                  </div>
-                  <div className="text-sm font-medium text-slate-500 mb-3">{service.duration}</div>
-                  <p className="text-slate-600 text-sm mb-6">{service.desc}</p>
-                </div>
-                <button onClick={() => handleBook(service)} className="btn-secondary w-full mt-auto">
-                  Book Appointment
-                </button>
-              </motion.div>
-            ))}
-          </div>
+                  <button onClick={() => handleBook(service)} className="btn-primary w-full mt-auto">
+                    Book Appointment
+                  </button>
+                </motion.div>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-white p-8 rounded-2xl text-center text-slate-500 border border-slate-100">
+              No services currently listed for this maternity center.
+            </div>
+          )}
         </div>
 
         {/* Reviews Section */}
         <div className="bg-white rounded-3xl p-8 md:p-12 shadow-sm border border-primary-100">
           <h2 className="text-2xl font-bold text-slate-900 mb-8">Patient Reviews</h2>
           
+          {/* Write Review Form */}
           <div className="bg-primary-50 rounded-2xl p-6 border border-primary-100 mb-8">
-            <h3 className="text-lg font-bold text-slate-900 mb-4">Write a review</h3>
-            <form className="space-y-4">
+            <h3 className="text-lg font-bold text-slate-900 mb-4">Write a patient review</h3>
+            {reviewMsg && (
+              <div className="mb-4 text-sm font-medium p-3 rounded-lg bg-white border border-primary-200 text-primary-700">
+                {reviewMsg}
+              </div>
+            )}
+            <form onSubmit={handleReviewSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Rating</label>
-                <select className="input-field max-w-xs">
-                  <option>5 - Excellent</option>
-                  <option>4 - Very Good</option>
-                  <option>3 - Good</option>
-                  <option>2 - Fair</option>
-                  <option>1 - Poor</option>
+                <select 
+                  value={rating} 
+                  onChange={(e) => setRating(e.target.value)}
+                  className="input-field max-w-xs"
+                >
+                  <option value={5}>5 - Excellent</option>
+                  <option value={4}>4 - Very Good</option>
+                  <option value={3}>3 - Good</option>
+                  <option value={2}>2 - Fair</option>
+                  <option value={1}>1 - Poor</option>
                 </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Comment</label>
                 <textarea 
                   rows="3" 
-                  placeholder="Share your experience..." 
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  required
+                  placeholder="Share your experience at this center..." 
                   className="input-field resize-none"
                 ></textarea>
               </div>
-              <button type="button" className="btn-secondary">Submit Review</button>
+              <button type="submit" disabled={submittingReview} className="btn-secondary">
+                {submittingReview ? "Submitting..." : "Submit Review"}
+              </button>
             </form>
           </div>
           
-          <div className="text-center py-8 text-slate-500">
-            No reviews yet. Be the first to share your experience.
-          </div>
+          {/* Review Items */}
+          {reviews.length > 0 ? (
+            <div className="space-y-4">
+              {reviews.map((rev, idx) => (
+                <div key={rev._id || idx} className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="font-bold text-slate-900">{rev.user?.name || "Verified Patient"}</span>
+                    <RatingStars rating={rev.rating} />
+                  </div>
+                  <p className="text-slate-600 text-sm">{rev.comment}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-slate-500">
+              No reviews yet. Be the first patient to share your experience.
+            </div>
+          )}
         </div>
       </div>
 
       {showBookingModal && (
         <BookingModal 
-          center={center} 
+          center={centerData} 
           service={selectedService} 
           onClose={() => setShowBookingModal(false)} 
         />

@@ -9,14 +9,23 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Mock user fetch for now if token exists
-    if (token) {
-      // In a real app we'd fetch profile from /api/users/profile
-      // For this scaffold, we'll set a mock user to allow routing
-      const storedUser = localStorage.getItem("user");
-      if (storedUser) setUser(JSON.parse(storedUser));
-    }
-    setLoading(false);
+    const fetchUser = async () => {
+      if (token) {
+        try {
+          const res = await api.get("/auth/me");
+          setUser(res.data);
+          localStorage.setItem("user", JSON.stringify(res.data));
+        } catch (error) {
+          console.error("Session verification failed:", error);
+          logout();
+        }
+      } else {
+        setUser(null);
+      }
+      setLoading(false);
+    };
+
+    fetchUser();
   }, [token]);
 
   const login = async (email, password) => {
@@ -26,9 +35,28 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem("user", JSON.stringify(res.data));
       setToken(res.data.token);
       setUser(res.data);
-      return { success: true };
+      return { success: true, user: res.data };
     } catch (error) {
-      return { success: false, message: error.response?.data?.message || "Login failed" };
+      return { 
+        success: false, 
+        message: error.response?.data?.message || "Login failed. Please check your credentials." 
+      };
+    }
+  };
+
+  const register = async (payload) => {
+    try {
+      const res = await api.post("/auth/register", payload);
+      localStorage.setItem("token", res.data.token);
+      localStorage.setItem("user", JSON.stringify(res.data));
+      setToken(res.data.token);
+      setUser(res.data);
+      return { success: true, user: res.data };
+    } catch (error) {
+      return { 
+        success: false, 
+        message: error.response?.data?.message || "Registration failed" 
+      };
     }
   };
 
@@ -40,7 +68,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );
