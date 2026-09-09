@@ -3,6 +3,7 @@ const router = express.Router();
 const MaternityCenter = require('../models/MaternityCenter');
 const Service = require('../models/Service');
 const Review = require('../models/Review');
+const User = require('../models/User');
 const { protect, adminOnly } = require('../middleware/authMiddleware');
 
 // @route   GET /api/centers
@@ -142,6 +143,80 @@ router.put('/:id', protect, async (req, res) => {
         res.json(center);
     } catch (error) {
         res.status(500).json({ message: error.message });
+    }
+});
+
+// @route   POST /api/centers
+// @desc    Add a new maternity center (Admin only)
+// @access  Private/Admin
+router.post('/', protect, adminOnly, async (req, res) => {
+    try {
+        const { centerName, ownerName, email, password, phone, address, location, description, status } = req.body;
+
+        if (!centerName || !ownerName || !email || !phone || !address || !location) {
+            return res.status(400).json({ message: 'Center Name, Owner Name, Email, Phone, Address, and Location are required' });
+        }
+
+        const existingCenter = await MaternityCenter.findOne({ email });
+        if (existingCenter) {
+            return res.status(400).json({ message: 'A maternity center with this email already exists' });
+        }
+
+        const rawPassword = password || 'provider123';
+
+        // Create the maternity center
+        const center = await MaternityCenter.create({
+            centerName,
+            ownerName,
+            email,
+            password: rawPassword,
+            phone,
+            address,
+            location,
+            description: description || 'Certified maternity care center.',
+            status: status || 'Approved'
+        });
+
+        // Ensure a provider user account exists so the provider can log in
+        const existingUser = await User.findOne({ email });
+        if (!existingUser) {
+            await User.create({
+                name: ownerName,
+                email,
+                password: rawPassword,
+                phone,
+                role: 'provider'
+            });
+        }
+
+        res.status(201).json({
+            message: 'Maternity center created successfully',
+            center
+        });
+    } catch (error) {
+        console.error('Create center error:', error);
+        res.status(500).json({ message: error.message || 'Error creating maternity center' });
+    }
+});
+
+// @route   DELETE /api/centers/:id
+// @desc    Delete a maternity center (Admin only)
+// @access  Private/Admin
+router.delete('/:id', protect, adminOnly, async (req, res) => {
+    try {
+        const center = await MaternityCenter.findById(req.params.id);
+        if (!center) {
+            return res.status(404).json({ message: 'Maternity center not found' });
+        }
+
+        // Clean up associated services
+        await Service.deleteMany({ center: center._id });
+        await MaternityCenter.findByIdAndDelete(req.params.id);
+
+        res.json({ message: 'Maternity center removed successfully' });
+    } catch (error) {
+        console.error('Delete center error:', error);
+        res.status(500).json({ message: error.message || 'Error deleting maternity center' });
     }
 });
 
